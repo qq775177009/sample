@@ -53,7 +53,56 @@ class User extends Authenticatable
 
     public function feed()
     {
-        return $this->statuses()
+        $user_ids = Auth::user()->followings->pluck('id')->toArray();
+        array_push($user_ids, Auth::user()->id);
+        return Status::whereIn('user_id', $user_ids)
+            ->with('user')
             ->orderBy('created_at', 'desc');
     }
+
+    /***
+     * 来获取粉丝关系列表
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function followers()
+    {
+        return $this->belongsToMany(User::Class, 'followers', 'user_id', 'follower_id');
+    }
+
+    /***
+     * 来获取用户关注人列表
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
+     */
+    public function followings()
+    {
+        return $this->belongsToMany(User::Class, 'followers', 'follower_id', 'user_id');
+    }
+
+    public function follow($user_ids)
+    {
+        if (!is_array($user_ids)) {
+            $user_ids = compact('user_ids');
+        }
+        $this->followings()->sync($user_ids, false);
+    }
+
+    public function unfollow($user_ids)
+    {
+        if (!is_array($user_ids)) {
+            $user_ids = compact('user_ids');
+        }
+        $this->followings()->detach($user_ids);
+    }
+
+    /***
+     * 是否有关注
+     * @param $user_id
+     * @return mixed
+     */
+    public function isFollowing($user_id)
+    {
+        return $this->followings->contains($user_id);
+    }
+
+
 }
